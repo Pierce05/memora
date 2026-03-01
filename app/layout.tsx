@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import {
   Geist,
   Geist_Mono,
+  Inter,
   Manrope,
+  Playfair_Display,
   Space_Grotesk,
   Bricolage_Grotesque,
   Instrument_Serif,
@@ -41,6 +43,16 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "makesomething ☀️",
   description: "build your first app with ai. look what i made!",
@@ -65,7 +77,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="light" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${spaceGrotesk.variable} ${bricolageGrotesque.variable} ${instrumentSerif.variable} min-h-screen text-foreground bg-background font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${spaceGrotesk.variable} ${bricolageGrotesque.variable} ${instrumentSerif.variable} ${inter.variable} ${playfair.variable} min-h-screen text-foreground bg-background font-sans antialiased`}
       >
         <Providers>{children}</Providers>
       </body>
