@@ -54,18 +54,23 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "makesomething ☀️",
-  description: "build your first app with ai. look what i made!",
-  metadataBase: new URL("https://makesomething.so"),
+  title: "Memora",
+  description: "Memora helps you remember the people who matter. Capture memories, connections, and details about friends, family, and colleagues so relationships never fade.",
+
+  metadataBase: new URL("https://try-memora.netlify.app"),
+
   openGraph: {
-    title: "makesomething ☀️",
-    description: "look what i made!",
-    siteName: "makesomething",
+    title: "Memora",
+    description:
+      "Your personal relationship memory system. Remember birthdays, conversations, stories, and connections effortlessly.",
+    siteName: "Memora",
   },
+
   twitter: {
     card: "summary_large_image",
-    title: "makesomething ☀️",
-    description: "look what i made!",
+    title: "Memora",
+    description:
+      "Memora helps you remember the people who matter.",
   },
 };
 
