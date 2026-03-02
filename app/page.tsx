@@ -19,6 +19,7 @@ import {
   Switch,
   Textarea,
 } from "@heroui/react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type CircleType = "college" | "family" | "startup" | "gym" | "travel";
@@ -42,6 +43,7 @@ type Lore = {
   icon: string;
   visibility: "private" | "public";
   text: string;
+  photo?: string;
   createdAt: string;
 };
 
@@ -124,6 +126,12 @@ function monthsAgo(isoDate: string) {
   return Math.max(0, Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24 * 30)));
 }
 
+function daysAgo(isoDate: string) {
+  const then = new Date(isoDate).getTime();
+  if (Number.isNaN(then)) return null;
+  return Math.max(0, Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24)));
+}
+
 function shouldIgnoreShortcut(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
@@ -156,6 +164,7 @@ function readInitialState(): LorebookState {
         icon: safeString(entry?.icon) || "MT",
         visibility,
         text: safeString(entry?.text),
+        photo: safeString((entry as Lore)?.photo),
         createdAt: safeString(entry?.createdAt) || new Date().toISOString(),
       };
     });
@@ -216,6 +225,7 @@ export default function Home() {
   const [captureText, setCaptureText] = useState("");
   const [captureIcon, setCaptureIcon] = useState("MT");
   const [captureVisibility, setCaptureVisibility] = useState<"private" | "public">("private");
+  const [capturePhoto, setCapturePhoto] = useState("");
   const [capturePlaceholder, setCapturePlaceholder] = useState("what happened?");
 
   const [fromId, setFromId] = useState("");
@@ -224,6 +234,8 @@ export default function Home() {
 
   const [metFlowMode, setMetFlowMode] = useState<"choose" | "existing" | "new">("choose");
   const [metFlowPersonId, setMetFlowPersonId] = useState("");
+  const [askQuery, setAskQuery] = useState("");
+  const [askAnswer, setAskAnswer] = useState("Ask me things like: when did I last meet Ria?");
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
@@ -351,8 +363,8 @@ export default function Home() {
   }, [relations]);
 
   const palette = darkMode
-    ? { bg: "#131218", card: "#1B1A20", border: "#302D36", accent: "#D46A6A", accentSecondary: "#E7B8C2", text: "#F3F3F3", muted: "#A9A4AE" }
-    : { bg: "#F7F4F1", card: "#FFFFFF", border: "#E8E5E0", accent: "#D46A6A", accentSecondary: "#F0B8B8", text: "#1F1F1F", muted: "#6B6B6B" };
+    ? { bg: "#0f0f12", card: "#17171c", border: "#2a2a32", accent: "#e76f72", accentSecondary: "#f3c1c3", text: "#F3F3F3", muted: "#A5A5AE" }
+    : { bg: "#F7F4F1", card: "#FFFFFF", border: "#E8E5E0", accent: "#e76f72", accentSecondary: "#f3c1c3", text: "#1F1F1F", muted: "#6B6B6B" };
 
   const vars = {
     "--bg": palette.bg,
@@ -367,11 +379,11 @@ export default function Home() {
 
   const inputClassNames = {
     base: "w-full",
-    inputWrapper: "bg-[var(--card)] border border-[var(--border)] rounded-[12px] shadow-none transition-all duration-[160ms] ease-out data-[hover=true]:border-[var(--accent)] group-data-[focus=true]:border-[var(--accent)]",
-    input: "text-[var(--text)] text-[14px] placeholder:text-[var(--muted)]",
+    inputWrapper: "bg-[var(--card)] border border-[var(--border)] rounded-[12px] shadow-none transition-all duration-[180ms] ease-out data-[hover=true]:border-[var(--accent)] group-data-[focus=true]:border-[var(--accent)]",
+    input: "text-[var(--text)] text-[15px] placeholder:text-[var(--muted)]",
     innerWrapper: "text-[var(--text)]",
-    trigger: "bg-[var(--card)] border border-[var(--border)] rounded-[12px] min-h-11 shadow-none transition-all duration-[160ms] ease-out data-[hover=true]:border-[var(--accent)] data-[open=true]:border-[var(--accent)]",
-    value: "text-[var(--text)] text-[14px]",
+    trigger: "bg-[var(--card)] border border-[var(--border)] rounded-[12px] min-h-11 shadow-none transition-all duration-[180ms] ease-out data-[hover=true]:border-[var(--accent)] data-[open=true]:border-[var(--accent)]",
+    value: "text-[var(--text)] text-[15px]",
     popoverContent: "bg-[var(--card)] border border-[var(--border)] text-[var(--text)]",
     listbox: "bg-[var(--card)]",
     selectorIcon: "text-[var(--muted)]",
@@ -380,22 +392,27 @@ export default function Home() {
     label: "text-[12px] text-[#8A8A8A]",
   };
 
-  const cardClass = "rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition-all duration-[160ms] ease-out hover:-translate-y-[2px] hover:shadow-[0_14px_30px_rgba(0,0,0,0.12)]";
+  const cardClass = "rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition-all duration-[180ms] ease-out hover:-translate-y-[2px] hover:shadow-[0_14px_30px_rgba(0,0,0,0.12)]";
   const modalClassNames = {
-    backdrop: "z-[90] bg-[rgba(0,0,0,0.25)] backdrop-blur-[6px]",
+    backdrop: "z-[90] bg-[rgba(0,0,0,0.45)] backdrop-blur-[8px]",
     wrapper: "z-[100] items-center justify-center px-4 py-6 sm:px-6",
     base: "mx-auto w-full max-w-[520px]",
   };
-  const modalContentClass = "mx-auto w-full max-w-[520px] rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 text-[var(--text)] shadow-[0_20px_50px_rgba(0,0,0,0.35)]";
+  const modalContentClass = "mx-auto w-full max-w-[520px] rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-0 text-[var(--text)] shadow-[0_24px_60px_rgba(0,0,0,0.34)]";
   const modalMotionProps = {
     variants: {
-      enter: { opacity: 1, scale: 1, transition: { duration: 0.16, ease: "easeOut" } },
-      exit: { opacity: 0, scale: 0.96, transition: { duration: 0.16, ease: "easeOut" } },
+      enter: { opacity: 1, scale: 1, transition: { duration: 0.18, ease: "easeOut" } },
+      exit: { opacity: 0, scale: 0.96, transition: { duration: 0.18, ease: "easeOut" } },
     },
     initial: "exit",
     animate: "enter",
     exit: "exit",
   } as const;
+  const switchClassNames = {
+    wrapper: "group-data-[selected=true]:bg-[var(--accent)]",
+    thumb: "bg-white",
+    label: "text-[12px] text-[var(--muted)]",
+  };
 
   const filteredPeople = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -430,7 +447,54 @@ export default function Home() {
     return Array.from(out).slice(0, 4);
   }, [openPerson, visibleLore, latestMemory]);
 
+  const intelligenceLines = useMemo(() => {
+    if (!openPerson) return [] as string[];
+    const lines: string[] = [];
+    if (latestMemory) {
+      const days = daysAgo(latestMemory.eventDate || latestMemory.createdAt);
+      if (days !== null && days > 7) lines.push(`You haven't spoken to ${openPerson.name} in ${days} days.`);
+    }
+    const personMemories = openPersonLore.filter((entry) => {
+      const raw = entry.eventDate || entry.createdAt;
+      const day = new Date(raw).getDay();
+      return !Number.isNaN(day) && (day === 0 || day === 6);
+    });
+    if (personMemories.length >= 2) lines.push(`You meet ${openPerson.name} most often on weekends.`);
+    if (openPerson.circle === "startup") {
+      const startupIds = new Set(people.filter((p) => p.circle === "startup").map((p) => p.id));
+      const startupEdges = relations.filter((edge) => startupIds.has(edge.fromId) && startupIds.has(edge.toId));
+      if (startupIds.size >= 3 && startupEdges.length >= 2) lines.push("Several people in your startup circle know each other.");
+    }
+    return lines.slice(0, 3);
+  }, [latestMemory, openPerson, openPersonLore, people, relations]);
+
   const recentMemories = useMemo(() => loreEntries.slice().sort((a, b) => (b.eventDate || b.createdAt).localeCompare(a.eventDate || a.createdAt)).slice(0, 8), [loreEntries]);
+
+  const reminders = useMemo(() => {
+    const lines: string[] = [];
+    const now = new Date();
+    for (const person of people) {
+      if (person.birthday) {
+        const birth = new Date(person.birthday);
+        if (!Number.isNaN(birth.getTime())) {
+          const next = new Date(now.getFullYear(), birth.getMonth(), birth.getDate());
+          if (next < now) next.setFullYear(now.getFullYear() + 1);
+          const days = Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          if (days >= 0 && days <= 14) lines.push(`${person.name}'s birthday is in ${days} day${days === 1 ? "" : "s"}.`);
+        }
+      }
+      const latest = loreEntries
+        .filter((entry) => entry.personId === person.id)
+        .sort((a, b) => (b.eventDate || b.createdAt).localeCompare(a.eventDate || a.createdAt))[0];
+      if (!latest) continue;
+      const days = daysAgo(latest.eventDate || latest.createdAt);
+      if (days !== null && days >= 180) {
+        const months = Math.floor(days / 30);
+        lines.push(`You haven't met ${person.name} in ${months} month${months === 1 ? "" : "s"}.`);
+      }
+    }
+    return lines.slice(0, 4);
+  }, [loreEntries, people]);
 
   const circleGroups = useMemo(() => {
     const groups: Record<CircleType, Person[]> = { college: [], family: [], startup: [], gym: [], travel: [] };
@@ -466,9 +530,9 @@ export default function Home() {
     return ids;
   }, [hoveredNodeId, relations]);
 
-  const addLore = (payload: { personId: string; text: string; icon?: string; visibility?: "private" | "public" }) => {
+  const addLore = (payload: { personId: string; text: string; icon?: string; visibility?: "private" | "public"; photo?: string }) => {
     if (!payload.personId || !payload.text.trim()) return;
-    setLoreEntries((prev) => [{ id: createId(), personId: payload.personId, eventDate: new Date().toISOString().slice(0, 10), icon: payload.icon || "MT", visibility: payload.visibility || "private", text: payload.text.trim(), createdAt: new Date().toISOString() }, ...prev]);
+    setLoreEntries((prev) => [{ id: createId(), personId: payload.personId, eventDate: new Date().toISOString().slice(0, 10), icon: payload.icon || "MT", visibility: payload.visibility || "private", text: payload.text.trim(), photo: payload.photo || "", createdAt: new Date().toISOString() }, ...prev]);
   };
 
   const handleSavePerson = () => {
@@ -486,18 +550,27 @@ export default function Home() {
     setCaptureText("");
     setCaptureIcon("MT");
     setCaptureVisibility("private");
+    setCapturePhoto("");
     setCapturePlaceholder("what happened first?");
     setModal("capture");
   };
 
   const handleSaveCapture = () => {
-    addLore({ personId: capturePersonId, text: captureText, icon: captureIcon, visibility: captureVisibility });
+    addLore({ personId: capturePersonId, text: captureText, icon: captureIcon, visibility: captureVisibility, photo: capturePhoto });
     setCapturePersonId("");
     setCaptureText("");
     setCaptureIcon("MT");
     setCaptureVisibility("private");
+    setCapturePhoto("");
     setCapturePlaceholder("what happened?");
     setModal(null);
+  };
+
+  const handlePhotoPick = (file: File | null) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCapturePhoto(typeof reader.result === "string" ? reader.result : "");
+    reader.readAsDataURL(file);
   };
 
   const handleConnect = () => {
@@ -529,12 +602,44 @@ export default function Home() {
   const selectItemClass =
     "text-[var(--text)] data-[hover=true]:bg-[var(--accent-secondary)]/25 data-[selected=true]:bg-[var(--accent-secondary)]/30 data-[selected=true]:text-[var(--text)]";
 
+  const answerMemoryQuery = () => {
+    const q = askQuery.trim().toLowerCase();
+    if (!q) return;
+    const person = people.find((p) => q.includes(p.name.toLowerCase()));
+    if (!person) {
+      setAskAnswer("I couldn't match that name yet. Try using the person's full name.");
+      return;
+    }
+
+    if (q.includes("drink")) {
+      setAskAnswer(person.favoriteDrink ? `${person.name} likes ${person.favoriteDrink}.` : `No drink saved yet for ${person.name}.`);
+      return;
+    }
+    if (q.includes("last meet") || q.includes("last met") || q.includes("last talk") || q.includes("when did")) {
+      const latest = loreEntries
+        .filter((entry) => entry.personId === person.id)
+        .sort((a, b) => (b.eventDate || b.createdAt).localeCompare(a.eventDate || a.createdAt))[0];
+      setAskAnswer(latest ? `You last logged ${person.name} on ${formatDate(latest.eventDate || latest.createdAt)}.` : `No interaction history saved yet for ${person.name}.`);
+      return;
+    }
+    if (q.includes("where") && q.includes("meet")) {
+      setAskAnswer(person.metAt ? `You met ${person.name} at ${person.metAt}.` : `No meeting place saved yet for ${person.name}.`);
+      return;
+    }
+    const memory = loreEntries.find((entry) => entry.personId === person.id && entry.text.toLowerCase().includes(q.replace(person.name.toLowerCase(), "").trim()));
+    if (memory) {
+      setAskAnswer(`${person.name}: ${memory.text}`);
+      return;
+    }
+    setAskAnswer(`I found ${person.name}, but need a sharper question like "what drink does ${person.name} like?"`);
+  };
+
   if (!isHydrated) {
     return <div style={vars} className="min-h-screen bg-[var(--bg)]" />;
   }
 
   return (
-    <div style={vars} className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-[family-name:var(--font-inter)] font-medium">
+    <div style={vars} className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-[family-name:var(--font-inter)] text-[15px] font-normal">
       <Navbar className="bg-transparent px-4 py-4 sm:px-10">
         <NavbarBrand>
           <div className="flex items-center gap-3">
@@ -550,7 +655,7 @@ export default function Home() {
           ].map(([id, label]) => (
             <button key={id} type="button" className="rounded-[12px] px-3 py-2 text-[14px] text-[var(--muted)] transition hover:bg-[var(--accent-secondary)]/25 hover:text-[var(--text)]" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{label}</button>
           ))}
-          <Switch size="sm" isSelected={darkMode} onValueChange={setDarkMode}>dark</Switch>
+          <Switch size="sm" classNames={switchClassNames} isSelected={darkMode} onValueChange={setDarkMode}>dark</Switch>
         </div>
       </Navbar>
 
@@ -558,8 +663,8 @@ export default function Home() {
         <section className={`${cardClass} py-8`}>
           <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
             <div className="space-y-4">
-              <h1 className="font-[family-name:var(--font-playfair)] text-[44px] leading-[1.15]">Memora</h1>
-              <p className="max-w-2xl text-[14px] leading-relaxed text-[var(--muted)]">A clean relationship dashboard for memory, context, and better conversations.</p>
+              <h1 className="font-[family-name:var(--font-playfair)] text-[32px] font-semibold leading-[1.15]">Memora</h1>
+              <p className="max-w-2xl text-[15px] leading-relaxed text-[var(--muted)]">Search people, open profile context, and log memories fast.</p>
             </div>
             <div className="w-full max-w-sm">
               <Input label="Global Search" placeholder="Search people, memories, connections" value={globalQuery} onValueChange={setGlobalQuery} classNames={inputClassNames} />
@@ -570,7 +675,7 @@ export default function Home() {
         <section className="grid gap-6 lg:grid-cols-3">
           <Card className={cardClass}>
             <CardHeader className="p-0 text-[20px] font-semibold leading-tight">Global Results</CardHeader>
-            <CardBody className="mt-6 flex flex-col gap-4 p-0 text-[14px] leading-relaxed">
+            <CardBody className="mt-6 flex flex-col gap-4 p-0 text-[15px] leading-relaxed">
               <div>
                 <p className="text-[12px] uppercase tracking-[0.12em] text-[var(--muted)]">People</p>
                 {globalResults.people.length === 0 ? <p className="text-[var(--muted)]">No people match.</p> : globalResults.people.slice(0, 5).map((person) => <p key={person.id}>- {person.name}</p>)}
@@ -582,6 +687,10 @@ export default function Home() {
               <div>
                 <p className="text-[12px] uppercase tracking-[0.12em] text-[var(--muted)]">Connections</p>
                 {globalResults.connections.length === 0 ? <p className="text-[var(--muted)]">No connections match.</p> : globalResults.connections.slice(0, 5).map((edge) => <p key={edge.id}>- {edge.label}</p>)}
+              </div>
+              <div className="pt-2">
+                <p className="text-[12px] uppercase tracking-[0.12em] text-[var(--muted)]">Reminders</p>
+                {reminders.length === 0 ? <p className="text-[var(--muted)]">No urgent reminders right now.</p> : reminders.map((line) => <p key={line}>- {line}</p>)}
               </div>
             </CardBody>
           </Card>
@@ -597,7 +706,8 @@ export default function Home() {
                   return (
                     <div key={entry.id} className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_6px_18px_rgba(0,0,0,0.06)] transition-all duration-[160ms] ease-out hover:-translate-y-[1px] hover:shadow-[0_10px_20px_rgba(0,0,0,0.08)]">
                       <p className="text-[12px] text-[#8A8A8A]">{formatDate(entry.eventDate || entry.createdAt)} • {personName}</p>
-                      <p className="mt-2 text-[14px] leading-relaxed">{entry.icon} {entry.text}</p>
+                      <p className="mt-2 text-[15px] leading-relaxed">{entry.icon} {entry.text}</p>
+                      {entry.photo ? <Image unoptimized src={entry.photo} alt="memory" width={560} height={160} className="mt-3 h-20 w-full rounded-[10px] object-cover" /> : null}
                     </div>
                   );
                 })
@@ -627,7 +737,7 @@ export default function Home() {
           <Card className={`${cardClass} lg:col-span-2`}>
             <CardHeader className="flex items-center justify-between p-0">
               <p className="text-[20px] font-semibold leading-tight">People</p>
-              <Switch isSelected={groupByCircle} onValueChange={setGroupByCircle} size="sm">group by circle</Switch>
+              <Switch isSelected={groupByCircle} classNames={switchClassNames} onValueChange={setGroupByCircle} size="sm">group by circle</Switch>
             </CardHeader>
             <CardBody className="mt-6 flex flex-col gap-4 p-0">
               <Input label="Search people" value={query} onValueChange={setQuery} classNames={inputClassNames} />
@@ -736,7 +846,7 @@ export default function Home() {
                         const active = !hoveredNodeId || node.id === hoveredNodeId || connectedNodeIds.has(node.id);
                         return (
                           <g key={node.id} transform={`translate(${node.x} ${node.y}) scale(${node.id === hoveredNodeId ? 1.08 : 1})`} onMouseEnter={() => setHoveredNodeId(node.id)} onMouseLeave={() => setHoveredNodeId(null)} onClick={() => { setOpenPersonId(node.id); setModal("person"); }} className="cursor-pointer transition-all duration-[140ms]">
-                            <circle r="32" fill="var(--card)" stroke="var(--accent)" strokeWidth="2.8" opacity={active ? 1 : 0.5} filter={node.id === hoveredNodeId ? "drop-shadow(0 0 14px rgba(212,106,106,0.55))" : undefined} />
+                            <circle r="32" fill="var(--card)" stroke="var(--accent)" strokeWidth="2.8" opacity={active ? 1 : 0.5} filter={node.id === hoveredNodeId ? "drop-shadow(0 0 14px rgba(231,111,114,0.55))" : undefined} />
                             <circle r="18" fill={avatarColor(person.name)} opacity={0.95} />
                             <text y="4" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--text)">{initials(person.name)}</text>
                             <text y="54" textAnchor="middle" fontSize="12" fill="var(--muted)">{person.name.slice(0, 18)}</text>
@@ -754,7 +864,15 @@ export default function Home() {
         <section id="insights" className="grid gap-6 md:grid-cols-2">
           <Card className={cardClass}>
             <CardHeader className="p-0 text-[20px] font-semibold leading-tight">Conversation Suggestions</CardHeader>
-            <CardBody className="mt-6 flex flex-col gap-3 p-0">
+            <CardBody className="mt-6 flex flex-col gap-4 p-0">
+              <div className="space-y-3 rounded-[12px] border border-[var(--border)] bg-[var(--bg)]/25 p-3">
+                <p className="text-[12px] opacity-60">Ask Memora</p>
+                <Input placeholder="When did I last meet Ria?" value={askQuery} onValueChange={setAskQuery} classNames={inputClassNames} />
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[15px] text-[var(--muted)]">{askAnswer}</p>
+                  <Button className="h-10 rounded-[12px] bg-[var(--accent)] px-4 text-white transition duration-180 hover:brightness-105" onPress={answerMemoryQuery}>Ask</Button>
+                </div>
+              </div>
               {openPerson ? (starters.length === 0 ? <p className="text-[14px] text-[var(--muted)]">Memora will suggest ideas here once you log interactions.</p> : starters.map((line) => <p key={line} className="text-[14px] leading-relaxed text-[var(--muted)]"><span className="mr-2">•</span>{line}</p>)) : <p className="text-[14px] text-[var(--muted)]">Memora will suggest ideas here once you log interactions.</p>}
             </CardBody>
           </Card>
@@ -767,15 +885,17 @@ export default function Home() {
         </section>
       </main>
 
-      <Button className="fixed bottom-6 right-6 z-40 h-14 rounded-full bg-[var(--accent)] px-7 text-white shadow-[0_16px_28px_rgba(0,0,0,0.28)] transition duration-150 hover:-translate-y-0.5 hover:scale-[1.05]" onPress={() => setModal("capture")}>+ memory</Button>
-      <Button className="fixed bottom-24 right-6 z-40 h-12 rounded-full border border-[var(--accent)] bg-[var(--card)] px-5 text-[var(--accent)] shadow-[0_12px_22px_rgba(0,0,0,0.18)] transition duration-150 hover:-translate-y-0.5 hover:scale-[1.05]" onPress={() => { setMetFlowMode("choose"); setModal("met"); }}>met someone?</Button>
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+        <Button className="h-12 rounded-full border border-[var(--accent)] bg-[var(--card)] px-5 text-[var(--accent)] shadow-[0_10px_24px_rgba(0,0,0,0.2)] transition duration-180 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(231,111,114,0.28)]" onPress={() => { setMetFlowMode("choose"); setModal("met"); }}>Met Someone</Button>
+        <Button className="h-[52px] rounded-full bg-[var(--accent)] px-7 text-white shadow-[0_14px_28px_rgba(0,0,0,0.26)] transition duration-180 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_30px_rgba(231,111,114,0.35)]" onPress={() => setModal("capture")}>+ Memory</Button>
+      </div>
 
       <Modal isOpen={modal === "capture"} onOpenChange={(open) => !open && handleCloseModals()} backdrop="opaque" classNames={modalClassNames} motionProps={modalMotionProps}>
         <ModalContent className={modalContentClass}>
           {(onClose) => (
             <>
-              <ModalHeader className="px-7 pt-7 text-[20px] font-semibold leading-tight">Capture Memory</ModalHeader>
-              <ModalBody className="gap-4 px-7 py-4">
+              <ModalHeader className="px-6 pt-6 text-[20px] font-semibold leading-tight">Capture Memory</ModalHeader>
+              <ModalBody className="gap-4 px-6 py-0">
                 <p className="text-[12px] text-[var(--muted)]">Press N to capture memory</p>
                 <Select label="Person" selectedKeys={capturePersonId ? [capturePersonId] : []} classNames={inputClassNames} onSelectionChange={(keys) => {
                   if (keys === "all") return;
@@ -784,6 +904,11 @@ export default function Home() {
                 }}>{people.map((person) => <SelectItem key={person.id} className={selectItemClass}>{person.name}</SelectItem>)}</Select>
                 <Textarea label="Memory" placeholder={capturePlaceholder} value={captureText} onValueChange={setCaptureText} minRows={4} classNames={inputClassNames} />
                 <Input label="Icon (optional)" value={captureIcon} onValueChange={setCaptureIcon} classNames={inputClassNames} />
+                <div className="space-y-2">
+                  <p className="text-[12px] opacity-60">Photo (optional)</p>
+                  <input type="file" accept="image/*" onChange={(event) => handlePhotoPick(event.target.files?.[0] ?? null)} className="block w-full rounded-[12px] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[12px]" />
+                  {capturePhoto ? <Image unoptimized src={capturePhoto} alt="memory preview" width={560} height={192} className="h-24 w-full rounded-[12px] object-cover" /> : null}
+                </div>
                 <Select label="Visibility (optional)" selectedKeys={[captureVisibility]} classNames={inputClassNames} onSelectionChange={(keys) => {
                   if (keys === "all") return;
                   const first = Array.from(keys)[0];
@@ -793,9 +918,9 @@ export default function Home() {
                   <SelectItem key="public" className={selectItemClass}>public</SelectItem>
                 </Select>
               </ModalBody>
-              <ModalFooter className="px-7 pb-7">
-                <Button className="h-11 rounded-[12px] border border-[var(--accent)] bg-transparent px-5 text-[var(--accent)]" onPress={() => { onClose(); handleCloseModals(); }}>Cancel</Button>
-                <Button className="h-11 rounded-[12px] bg-[var(--accent)] px-5 text-white" onPress={handleSaveCapture}>Save</Button>
+              <ModalFooter className="gap-3 px-6 pb-6 pt-5">
+                <Button className="h-11 rounded-[12px] bg-transparent px-5 text-[var(--muted)] transition duration-180 hover:bg-[var(--accent-secondary)]/20 hover:text-[var(--text)]" onPress={() => { onClose(); handleCloseModals(); }}>Cancel</Button>
+                <Button className="h-11 rounded-[12px] bg-[var(--accent)] px-5 text-white transition duration-180 hover:brightness-105" onPress={handleSaveCapture}>Save</Button>
               </ModalFooter>
             </>
           )}
@@ -804,12 +929,12 @@ export default function Home() {
 
       <Modal isOpen={modal === "met"} onOpenChange={(open) => !open && handleCloseModals()} backdrop="opaque" classNames={modalClassNames} motionProps={modalMotionProps}>
         <ModalContent className={modalContentClass}>
-          <ModalHeader className="px-7 pt-7 text-[20px] font-semibold leading-tight">Met Someone?</ModalHeader>
-          <ModalBody className="gap-4 px-7 py-4">
+          <ModalHeader className="px-6 pt-6 text-[20px] font-semibold leading-tight">Met Someone?</ModalHeader>
+          <ModalBody className="gap-4 px-6 py-0">
             {metFlowMode === "choose" ? (
               <>
-                <Button className="h-11 w-full justify-center rounded-[12px] bg-[var(--accent)] px-5 text-white" onPress={() => setMetFlowMode("existing")}>Already in database</Button>
-                <Button className="h-11 w-full justify-center rounded-[12px] border border-[var(--accent)] bg-transparent px-5 text-[var(--accent)]" onPress={() => setMetFlowMode("new")}>New person</Button>
+                <Button className="h-11 w-full justify-center rounded-[12px] bg-[var(--accent)] px-5 text-white transition duration-180 hover:brightness-105" onPress={() => setMetFlowMode("existing")}>Already in database</Button>
+                <Button className="h-11 w-full justify-center rounded-[12px] bg-transparent px-5 text-[var(--muted)] transition duration-180 hover:bg-[var(--accent-secondary)]/20 hover:text-[var(--text)]" onPress={() => setMetFlowMode("new")}>New person</Button>
               </>
             ) : null}
             {metFlowMode === "existing" ? (
@@ -820,8 +945,8 @@ export default function Home() {
                   if (typeof first === "string") setMetFlowPersonId(first);
                 }}>{people.map((person) => <SelectItem key={person.id} className={selectItemClass}>{person.name}</SelectItem>)}</Select>
                 <div className="flex gap-2">
-                  <Button className="h-11 rounded-[12px] border border-[var(--accent)] bg-transparent text-[var(--accent)]" onPress={() => setMetFlowMode("choose")}>Back</Button>
-                  <Button className="h-11 rounded-[12px] bg-[var(--accent)] text-white" onPress={() => { setCapturePersonId(metFlowPersonId); setModal("capture"); }}>Continue</Button>
+                  <Button className="h-11 rounded-[12px] bg-transparent text-[var(--muted)] transition duration-180 hover:bg-[var(--accent-secondary)]/20 hover:text-[var(--text)]" onPress={() => setMetFlowMode("choose")}>Back</Button>
+                  <Button className="h-11 rounded-[12px] bg-[var(--accent)] text-white transition duration-180 hover:brightness-105" onPress={() => { setCapturePersonId(metFlowPersonId); setModal("capture"); }}>Continue</Button>
                 </div>
               </>
             ) : null}
@@ -834,12 +959,13 @@ export default function Home() {
                   if (first === "college" || first === "family" || first === "startup" || first === "gym" || first === "travel") setCircle(first);
                 }}>{CIRCLE_OPTIONS.map((option) => <SelectItem key={option} className={selectItemClass}>{option}</SelectItem>)}</Select>
                 <div className="flex gap-2">
-                  <Button className="h-11 rounded-[12px] border border-[var(--accent)] bg-transparent text-[var(--accent)]" onPress={() => setMetFlowMode("choose")}>Back</Button>
-                  <Button className="h-11 rounded-[12px] bg-[var(--accent)] text-white" onPress={handleSavePerson}>Save person</Button>
+                  <Button className="h-11 rounded-[12px] bg-transparent text-[var(--muted)] transition duration-180 hover:bg-[var(--accent-secondary)]/20 hover:text-[var(--text)]" onPress={() => setMetFlowMode("choose")}>Back</Button>
+                  <Button className="h-11 rounded-[12px] bg-[var(--accent)] text-white transition duration-180 hover:brightness-105" onPress={handleSavePerson}>Save person</Button>
                 </div>
               </>
             ) : null}
           </ModalBody>
+          <ModalFooter className="px-6 pb-6 pt-5" />
         </ModalContent>
       </Modal>
 
@@ -847,51 +973,61 @@ export default function Home() {
         <ModalContent className={modalContentClass}>
           {(onClose) => (
             <>
-              <ModalHeader className="px-7 pb-3 pt-7">
-                <div className="w-full space-y-5">
+              <ModalHeader className="px-6 pb-0 pt-6">
+                <div className="w-full space-y-6">
                   <div className="flex items-center gap-4">
                     <Avatar name={openPerson?.name ?? "?"} size={64} />
                     <div>
-                      <p className="font-[family-name:var(--font-playfair)] text-[44px] leading-[1.1]">{openPerson?.name}</p>
+                      <p className="font-[family-name:var(--font-playfair)] text-[32px] font-semibold leading-[1.1]">{openPerson?.name}</p>
                       <Badge className="mt-2 rounded-full bg-[var(--accent-secondary)] px-3 py-1 text-[12px] text-[var(--text)]">{openPerson?.circle || "circle"}</Badge>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-4">
-                    <div className="rounded-[12px] border border-[var(--border)] p-3"><p className="text-[12px] text-[#8A8A8A]">BD birthday</p><p className="mt-1 text-[14px] leading-relaxed">{openPerson?.birthday || "not set"}</p></div>
-                    <div className="rounded-[12px] border border-[var(--border)] p-3"><p className="text-[12px] text-[#8A8A8A]">DR drink</p><p className="mt-1 text-[14px] leading-relaxed">{openPerson?.favoriteDrink || "not set"}</p></div>
-                    <div className="rounded-[12px] border border-[var(--border)] p-3"><p className="text-[12px] text-[#8A8A8A]">ME met</p><p className="mt-1 text-[14px] leading-relaxed">{openPerson?.metAt || "not set"}</p></div>
-                    <div className="rounded-[12px] border border-[var(--border)] p-3"><p className="text-[12px] text-[#8A8A8A]">LM last</p><p className="mt-1 text-[14px] leading-relaxed">{latestMemory ? latestMemory.text.slice(0, 32) : "none yet"}</p></div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg)]/30 p-3"><p className="text-[12px] opacity-60">Birthday</p><p className="mt-1 text-[15px]">{openPerson?.birthday || "not set"}</p></div>
+                    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg)]/30 p-3"><p className="text-[12px] opacity-60">Favorite drink</p><p className="mt-1 text-[15px]">{openPerson?.favoriteDrink || "not set"}</p></div>
+                    <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg)]/30 p-3"><p className="text-[12px] opacity-60">Last met</p><p className="mt-1 text-[15px]">{latestMemory ? formatDate(latestMemory.eventDate || latestMemory.createdAt) : "not logged"}</p></div>
                   </div>
                 </div>
               </ModalHeader>
 
-              <ModalBody className="space-y-6 px-7 py-4">
+              <ModalBody className="space-y-6 px-6 py-6">
                 <section className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-[20px] leading-tight">Conversation</p>
-                    <Switch size="sm" isSelected={showPrivateLore} onValueChange={setShowPrivateLore}>show private</Switch>
+                    <p className="text-[20px] font-semibold leading-tight">Conversation Suggestions</p>
+                    <Switch size="sm" classNames={switchClassNames} isSelected={showPrivateLore} onValueChange={setShowPrivateLore}>show private</Switch>
                   </div>
-                  {starters.length === 0 ? <p className="text-[14px] text-[var(--muted)]">Memora will suggest ideas here once you log interactions.</p> : starters.map((line) => <p key={line} className="text-[14px] leading-relaxed text-[var(--muted)]"><span className="mr-2">•</span>{line}</p>)}
+                  {starters.length === 0 ? <p className="text-[15px] text-[var(--muted)]">Memora will suggest ideas here once you log interactions.</p> : starters.map((line) => <p key={line} className="text-[15px] leading-relaxed text-[var(--muted)]"><span className="mr-2 text-[var(--accent)]">•</span>{line}</p>)}
+                  {intelligenceLines.length > 0 ? (
+                    <div className="space-y-2 rounded-[12px] border border-[var(--border)] bg-[var(--bg)]/30 p-3">
+                      {intelligenceLines.map((line) => <p key={line} className="text-[15px] text-[var(--muted)]"><span className="mr-2 text-[var(--accent)]">•</span>{line}</p>)}
+                    </div>
+                  ) : null}
                 </section>
 
                 <section className="space-y-3">
-                  <p className="text-[20px] leading-tight">Timeline</p>
-                  {visibleLore.length === 0 ? <p className="text-[14px] text-[var(--muted)]">No memories yet. Add your first moment.</p> : (
-                    <div className="flex flex-col gap-3">
-                      {visibleLore.slice(0, 8).map((entry) => (
-                        <div key={entry.id} className="rounded-[14px] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_6px_18px_rgba(0,0,0,0.06)] transition-all duration-[160ms] ease-out hover:-translate-y-[1px] hover:shadow-[0_10px_20px_rgba(0,0,0,0.08)]">
-                          <p className="text-[12px] text-[#8A8A8A]">{formatDate(entry.eventDate || entry.createdAt)}</p>
-                          <p className="mt-2 text-[14px] leading-relaxed">{entry.icon} {entry.text}</p>
+                  <p className="text-[20px] font-semibold leading-tight">Timeline</p>
+                  {visibleLore.length === 0 ? <p className="text-[15px] text-[var(--muted)]">No memories yet. Add your first moment.</p> : (
+                    <div className="relative ml-1 border-l-2 border-[var(--border)] pl-6">
+                      <div className="flex flex-col gap-6">
+                      {visibleLore.map((entry) => (
+                        <div key={entry.id} className="relative">
+                          <span className="absolute -left-[31px] top-1 h-[10px] w-[10px] rounded-full bg-[var(--accent)]" />
+                          <p className="mb-2 text-[12px] opacity-60">{formatDate(entry.eventDate || entry.createdAt)}</p>
+                          <div className="rounded-[12px] border border-[var(--border)] bg-[var(--bg)]/35 p-[14px] shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-all duration-[180ms] ease-out hover:-translate-y-[1px] hover:bg-[var(--accent-secondary)]/12">
+                            <p className="text-[15px] leading-relaxed">{entry.icon} {entry.text}</p>
+                            {entry.photo ? <Image unoptimized src={entry.photo} alt="memory" width={560} height={192} className="mt-3 h-24 w-full rounded-[10px] object-cover" /> : null}
+                          </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   )}
                 </section>
               </ModalBody>
 
-              <ModalFooter className="px-7 pb-7 pt-3">
-                <Button className="h-11 rounded-[12px] border border-[var(--accent)] bg-transparent px-5 text-[var(--accent)]" onPress={() => { onClose(); setOpenPersonId(null); handleCloseModals(); }}>Close</Button>
+              <ModalFooter className="gap-3 px-6 pb-6 pt-5">
+                <Button className="h-11 rounded-[12px] bg-transparent px-5 text-[var(--muted)] transition duration-180 hover:bg-[var(--accent-secondary)]/20 hover:text-[var(--text)]" onPress={() => { onClose(); setOpenPersonId(null); handleCloseModals(); }}>Close</Button>
               </ModalFooter>
             </>
           )}
